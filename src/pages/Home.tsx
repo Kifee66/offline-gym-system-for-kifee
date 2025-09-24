@@ -1,12 +1,13 @@
-import { useState, useEffect } from 'react'; // Fixed LogIn reference error
-import { supabase } from '@/integrations/supabase/client';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { StatusSection } from '@/components/StatusSection';
 import { MemberSearch } from '@/components/MemberSearch';
 import { IncompletePaymentsSection } from '@/components/IncompletePaymentsSection';
 import { MonthlyRevenue } from '@/components/MonthlyRevenue';
-import { useCachedMemberStore } from '@/hooks/useCachedMemberStore';
+import { ExportButtons } from '@/components/ExportButtons';
+import { useMembers } from '@/hooks/useMembers';
+import { useSearchMembers } from '@/hooks/useMembers';
 import { 
   UserPlus, 
   RefreshCw, 
@@ -15,66 +16,26 @@ import {
   AlertTriangle,
   Clock,
   TrendingUp,
-  CreditCard,
-  LogOut
+  CreditCard
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '@/hooks/useAuth';
 
 export default function Home() {
-  const { 
-    members, 
-    searchQuery, 
-    searchMembers, 
-    activeMembers, 
-    dueMembers, 
-    overdueMembers,
-    incompletePaymentMembers
-  } = useCachedMemberStore();
+  const { members, activeMembers, dueMembers, overdueMembers, updateAllMemberStatuses } = useMembers();
+  const [searchQuery, setSearchQuery] = useState('');
+  const searchResults = useSearchMembers(searchQuery);
   
-  const { logout } = useAuth();
-  const [incompletePaymentsCount, setIncompletePaymentsCount] = useState(0);
-
+  const incompletePaymentMembers = members.filter(member => !member.paymentComplete);
   const totalRevenue = members.reduce((sum, member) => sum + member.amountPaid, 0);
 
+  // Update member statuses on component mount
   useEffect(() => {
-    const fetchIncompletePaymentsCount = async () => {
-      try {
-        const { count, error } = await supabase
-          .from('payment_transactions')
-          .select('*', { count: 'exact', head: true })
-          .eq('transaction_type', 'incomplete');
-
-        if (error) throw error;
-        setIncompletePaymentsCount(count || 0);
-      } catch (error) {
-        console.error('Error fetching incomplete payments count:', error);
-      }
-    };
-
-    fetchIncompletePaymentsCount();
-
-    // Set up real-time subscription for incomplete payments
-    const channel = supabase
-      .channel('incomplete-payments-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'payment_transactions',
-          filter: 'transaction_type=eq.incomplete'
-        },
-        () => {
-          fetchIncompletePaymentsCount();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    updateAllMemberStatuses();
   }, []);
+
+  const searchMembers = (query: string) => {
+    setSearchQuery(query);
+  };
 
   return (
     <div className="min-h-screen bg-hero-gradient">
@@ -92,14 +53,7 @@ export default function Home() {
             </div>
             <div className="flex items-center gap-4">
               <MemberSearch onSearch={searchMembers} searchQuery={searchQuery} />
-              <Button 
-                variant="outline" 
-                onClick={() => logout()}
-                className="flex items-center gap-2"
-              >
-                <LogOut className="h-4 w-4" />
-                Logout
-              </Button>
+              <ExportButtons />
             </div>
           </div>
         </div>

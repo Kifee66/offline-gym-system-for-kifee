@@ -1,79 +1,21 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TrendingUp, ExternalLink } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { useTransactions } from '@/hooks/useTransactions';
 
 export function MonthlyRevenue() {
   const navigate = useNavigate();
-  const [monthlyRevenue, setMonthlyRevenue] = useState<Record<string, number>>({});
-  const [totalRevenue, setTotalRevenue] = useState(0);
+  const { transactions, totalRevenue } = useTransactions();
 
-  useEffect(() => {
-    const fetchRevenue = async () => {
-      try {
-        const { data: transactions, error } = await supabase
-          .from('payment_transactions')
-          .select('amount, transaction_date');
-
-        if (error) {
-          console.error('Supabase error:', error);
-          throw error;
-        }
-
-        console.log('Fetched transactions:', transactions);
-
-        const monthlyTotals: Record<string, number> = {};
-        let total = 0;
-
-        transactions?.forEach(transaction => {
-          const month = transaction.transaction_date.slice(0, 7);
-          const amount = parseFloat(String(transaction.amount));
-          
-          if (!isNaN(amount)) {
-            if (!monthlyTotals[month]) {
-              monthlyTotals[month] = 0;
-            }
-            monthlyTotals[month] += amount;
-            total += amount;
-          }
-        });
-
-        console.log('Calculated total revenue:', total);
-        console.log('Monthly totals:', monthlyTotals);
-
-        setMonthlyRevenue(monthlyTotals);
-        setTotalRevenue(total);
-      } catch (error) {
-        console.error('Error fetching revenue:', error);
-        setMonthlyRevenue({});
-        setTotalRevenue(0);
-      }
-    };
-
-    fetchRevenue();
-
-    // Set up real-time subscription
-    const channel = supabase
-      .channel('payment_transactions_realtime')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'payment_transactions'
-        },
-        (payload) => {
-          console.log('Real-time update received:', payload);
-          fetchRevenue();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
+  // Calculate monthly revenue
+  const monthlyRevenue = transactions.reduce((acc, transaction) => {
+    const month = transaction.date.toISOString().slice(0, 7);
+    if (!acc[month]) {
+      acc[month] = 0;
+    }
+    acc[month] += transaction.amount;
+    return acc;
+  }, {} as Record<string, number>);
 
   // Sort months and get recent 6 months
   const sortedMonths = Object.entries(monthlyRevenue)

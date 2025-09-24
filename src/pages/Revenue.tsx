@@ -1,86 +1,36 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { useCachedMemberStore } from '@/hooks/useCachedMemberStore';
-import { TrendingUp, ArrowLeft, Calendar, DollarSign, Users, LogOut } from 'lucide-react';
+import { useMembers } from '@/hooks/useMembers';
+import { useTransactions } from '@/hooks/useTransactions';
+import { TrendingUp, ArrowLeft, Calendar, DollarSign, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useContext, useState, useEffect } from 'react';
-import { AuthContext } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
+import { useState } from 'react';
 
-interface PaymentTransaction {
-  id: string;
-  member_id: string;
-  amount: number;
-  transaction_type: 'registration' | 'renewal' | 'additional_payment' | 'incomplete';
-  transaction_date: string;
-  description?: string;
-}
-
-interface MemberWithPayments {
-  id: string;
-  full_name: string;
-  payment_method: string;
-}
 
 export default function Revenue() {
-  const { members } = useCachedMemberStore();
+  const { members } = useMembers();
+  const { transactions, totalRevenue: allTimeRevenue } = useTransactions();
   const navigate = useNavigate();
-  const auth = useContext(AuthContext);
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
-  const [monthlyRevenue, setMonthlyRevenue] = useState<Record<string, number>>({});
-  const [totalRevenue, setTotalRevenue] = useState(0);
-  const [transactions, setTransactions] = useState<PaymentTransaction[]>([]);
   const [includeIncompletePayments, setIncludeIncompletePayments] = useState(false);
 
-  useEffect(() => {
-    const fetchRevenue = async () => {
-      try {
-        const { data: transactionData, error } = await supabase
-          .from('payment_transactions')
-          .select('*')
-          .order('transaction_date', { ascending: false });
-
-        if (error) throw error;
-
-        const typedTransactions = (transactionData || []).map(t => ({
-          ...t,
-          transaction_type: t.transaction_type as PaymentTransaction['transaction_type']
-        }));
-        setTransactions(typedTransactions);
-        calculateRevenue(typedTransactions, includeIncompletePayments);
-      } catch (error) {
-        console.error('Error fetching revenue:', error);
+  // Calculate monthly revenue
+  const monthlyRevenue = transactions
+    .filter(t => includeIncompletePayments || t.type !== 'refund')
+    .reduce((acc, transaction) => {
+      const month = transaction.date.toISOString().slice(0, 7);
+      if (!acc[month]) {
+        acc[month] = 0;
       }
-    };
+      acc[month] += transaction.amount;
+      return acc;
+    }, {} as Record<string, number>);
 
-    fetchRevenue();
-  }, []);
-
-  useEffect(() => {
-    calculateRevenue(transactions, includeIncompletePayments);
-  }, [includeIncompletePayments, transactions]);
-
-  const calculateRevenue = (transactionData: PaymentTransaction[], includeIncomplete: boolean) => {
-    const monthlyTotals: Record<string, number> = {};
-    let total = 0;
-
-    transactionData.forEach(transaction => {
-      // Skip incomplete payments if toggle is off
-      if (transaction.transaction_type === 'incomplete' && !includeIncomplete) {
-        return;
-      }
-
-      const month = transaction.transaction_date.slice(0, 7);
-      if (!monthlyTotals[month]) {
-        monthlyTotals[month] = 0;
-      }
-      monthlyTotals[month] += Number(transaction.amount);
-      total += Number(transaction.amount);
-    });
-
-    setMonthlyRevenue(monthlyTotals);
-    setTotalRevenue(total);
-  };
+  const totalRevenue = includeIncompletePayments 
+    ? allTimeRevenue 
+    : transactions
+        .filter(t => t.type !== 'refund')
+        .reduce((sum, t) => sum + t.amount, 0);
 
   // Sort months chronologically (newest first)
   const sortedMonths = Object.entries(monthlyRevenue)
@@ -92,19 +42,19 @@ export default function Revenue() {
   const getPaymentsByMonth = (month: string) => {
     return transactions
       .filter(t => {
-        const transactionMonth = t.transaction_date.slice(0, 7);
+        const transactionMonth = t.date.toISOString().slice(0, 7);
         const isInMonth = transactionMonth === month;
-        const shouldInclude = t.transaction_type !== 'incomplete' || includeIncompletePayments;
+        const shouldInclude = includeIncompletePayments || t.type !== 'refund';
         return isInMonth && shouldInclude;
       })
       .map(transaction => {
-        const member = members.find(m => m.id === transaction.member_id);
+        const member = members.find(m => m.id === transaction.memberId);
         return {
-          id: transaction.id,
-          amount: Number(transaction.amount),
-          type: transaction.transaction_type,
-          date: new Date(transaction.transaction_date),
-          memberName: member?.fullName || 'Unknown Member',
+          id: transaction.id || 0,
+          amount: transaction.amount,
+          type: transaction.type,
+          date: transaction.date,
+          memberName: member?.name || 'Unknown Member',
           method: member?.paymentMethod || 'unknown',
           description: transaction.description
         };
@@ -125,19 +75,6 @@ export default function Revenue() {
               Back to Dashboard
             </Button>
             <h1 className="text-3xl font-bold text-foreground">Revenue Analytics</h1>
-          </div>
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-muted-foreground">
-              Welcome, {auth?.user?.name}
-            </span>
-            <Button
-              variant="outline"
-              onClick={auth?.logout}
-              className="flex items-center gap-2"
-            >
-              <LogOut className="h-4 w-4" />
-              Logout
-            </Button>
           </div>
         </div>
 
@@ -254,26 +191,26 @@ export default function Revenue() {
                               {getPaymentsByMonth(month).map((payment) => (
                                 <div key={payment.id} className="flex justify-between items-center py-2 px-3 bg-background/50 rounded border">
                                   <div className="flex items-center gap-3">
-                                     <div className={`w-2 h-2 rounded-full ${
-                                       payment.type === 'registration' 
-                                         ? 'bg-green-500' 
-                                         : payment.type === 'renewal' 
-                                         ? 'bg-blue-500' 
-                                         : payment.type === 'incomplete'
-                                         ? 'bg-red-500'
-                                         : 'bg-orange-500'
-                                     }`} />
-                                    <div>
-                                      <p className="font-medium text-foreground">{payment.memberName}</p>
-                                       <p className="text-xs text-muted-foreground">
-                                         {payment.type === 'registration' 
-                                           ? 'Registration' 
-                                           : payment.type === 'renewal' 
-                                           ? 'Renewal' 
-                                           : payment.type === 'incomplete'
-                                           ? 'Incomplete Payment'
-                                           : 'Additional Payment'} • {payment.method.toUpperCase()}
-                                       </p>
+                        <div className={`w-2 h-2 rounded-full ${
+                          payment.type === 'payment' 
+                            ? 'bg-green-500' 
+                            : payment.type === 'renewal' 
+                            ? 'bg-blue-500' 
+                            : payment.type === 'refund'
+                            ? 'bg-red-500'
+                            : 'bg-orange-500'
+                        }`} />
+                        <div>
+                          <p className="font-medium text-foreground">{payment.memberName}</p>
+                           <p className="text-xs text-muted-foreground">
+                             {payment.type === 'payment' 
+                               ? 'Payment' 
+                               : payment.type === 'renewal' 
+                               ? 'Renewal' 
+                               : payment.type === 'refund'
+                               ? 'Refund'
+                               : 'Additional Payment'} • {payment.method.toUpperCase()}
+                           </p>
                                       {payment.description && (
                                         <p className="text-xs text-muted-foreground/80">{payment.description}</p>
                                       )}

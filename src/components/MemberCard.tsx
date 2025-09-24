@@ -1,4 +1,4 @@
-import { Member } from '@/types/member';
+import { Member } from '@/lib/db';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -18,8 +18,8 @@ import { format, differenceInDays } from 'date-fns';
 
 interface MemberCardProps {
   member: Member;
-  onRenew?: (memberId: string) => void;
-  onDelete?: (memberId: string) => void;
+  onRenew?: (memberId: number) => void;
+  onDelete?: (memberId: number) => void;
   showDeleteButton?: boolean;
 }
 
@@ -45,7 +45,7 @@ export function MemberCard({ member, onRenew, onDelete, showDeleteButton }: Memb
   const getDuePeriodInfo = () => {
     const today = new Date();
     today.setHours(0, 0, 0, 0); // Reset time to start of day for accurate comparison
-    const dueDate = new Date(member.dueDate);
+    const dueDate = new Date(member.endDate);
     dueDate.setHours(0, 0, 0, 0); // Reset time to start of day for accurate comparison
     const daysDifference = differenceInDays(dueDate, today);
     
@@ -70,7 +70,7 @@ export function MemberCard({ member, onRenew, onDelete, showDeleteButton }: Memb
     <Card className="hover:shadow-lg transition-shadow duration-200">
       <CardHeader className="pb-3">
         <div className="flex justify-between items-start">
-          <CardTitle className="text-lg font-semibold">{member.fullName}</CardTitle>
+          <CardTitle className="text-lg font-semibold">{member.name}</CardTitle>
           <Badge className={getStatusColor(member.status)}>
             {getStatusLabel(member.status)}
           </Badge>
@@ -79,12 +79,12 @@ export function MemberCard({ member, onRenew, onDelete, showDeleteButton }: Memb
       <CardContent className="space-y-3">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Phone className="h-4 w-4" />
-          <span>{member.contactNumber}</span>
+          <span>{member.phone}</span>
         </div>
         
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Calendar className="h-4 w-4" />
-          <span>Due: {format(member.dueDate, 'MMM dd, yyyy')}</span>
+          <span>Due: {format(member.endDate, 'MMM dd, yyyy')}</span>
         </div>
 
         {duePeriodInfo && (
@@ -110,7 +110,7 @@ export function MemberCard({ member, onRenew, onDelete, showDeleteButton }: Memb
               variant={member.status === 'active' ? 'outline' : 'fitness'}
               size="sm" 
               className="flex-1"
-              onClick={() => onRenew(member.id)}
+              onClick={() => onRenew(member.id!)}
             >
               Renew Membership
             </Button>
@@ -131,13 +131,13 @@ export function MemberCard({ member, onRenew, onDelete, showDeleteButton }: Memb
                 <AlertDialogHeader>
                   <AlertDialogTitle>Delete Member</AlertDialogTitle>
                   <AlertDialogDescription>
-                    Are you sure you want to delete {member.fullName}? This action cannot be undone and will permanently remove their data and payment history.
+                    Are you sure you want to delete {member.name}? This action cannot be undone and will permanently remove their data and payment history.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Cancel</AlertDialogCancel>
                   <AlertDialogAction 
-                    onClick={() => onDelete(member.id)}
+                    onClick={() => onDelete(member.id!)}
                     className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                   >
                     Delete Member

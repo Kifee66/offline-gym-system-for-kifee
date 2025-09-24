@@ -5,8 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useNavigate } from 'react-router-dom';
-import { useMemberStore } from '@/hooks/useMemberStore';
-import { Member } from '@/types/member';
+import { useMembers } from '@/hooks/useMembers';
+import { Member } from '@/lib/db';
 
 interface MemberSearchProps {
   onSearch: (query: string) => void;
@@ -16,7 +16,7 @@ interface MemberSearchProps {
 export function MemberSearch({ onSearch, searchQuery }: MemberSearchProps) {
   const [localQuery, setLocalQuery] = useState(searchQuery);
   const [open, setOpen] = useState(false);
-  const { members } = useMemberStore();
+  const { members } = useMembers();
   const navigate = useNavigate();
 
   const handleSearch = (query: string) => {
@@ -33,17 +33,17 @@ export function MemberSearch({ onSearch, searchQuery }: MemberSearchProps) {
   };
 
   const handleMemberSelect = (member: Member) => {
-    setLocalQuery(member.fullName);
+    setLocalQuery(member.name);
     setOpen(false);
     // Navigate to memberships page with search params to show this specific member
-    navigate(`/memberships?search=${encodeURIComponent(member.fullName)}`);
+    navigate(`/memberships?search=${encodeURIComponent(member.name)}`);
   };
 
   // Filter members based on search query with improved matching
   const filteredMembers = localQuery.length > 1 ? members.filter(member => {
     const query = localQuery.toLowerCase().trim();
-    const name = member.fullName.toLowerCase();
-    const phone = member.contactNumber;
+    const name = member.name.toLowerCase();
+    const phone = member.phone;
     
     return name.includes(query) || 
            phone.includes(query) ||
@@ -88,8 +88,8 @@ export function MemberSearch({ onSearch, searchQuery }: MemberSearchProps) {
                   >
                     <User className="h-4 w-4 text-muted-foreground" />
                     <div className="flex flex-col">
-                      <span className="font-medium">{member.fullName}</span>
-                      <span className="text-sm text-muted-foreground">{member.contactNumber}</span>
+                      <span className="font-medium">{member.name}</span>
+                      <span className="text-sm text-muted-foreground">{member.phone}</span>
                     </div>
                   </CommandItem>
                 ))}

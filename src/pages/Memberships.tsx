@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { MemberCard } from '@/components/MemberCard';
 import { MemberSearch } from '@/components/MemberSearch';
-import { useCachedMemberStore } from '@/hooks/useCachedMemberStore';
+import { useMembers, useSearchMembers } from '@/hooks/useMembers';
 import { ArrowLeft, Users, Activity, Clock, AlertTriangle, Trash2 } from 'lucide-react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
@@ -27,16 +27,13 @@ export default function Memberships() {
   const initialSearch = searchParams.get('search') || '';
   const [statusFilter, setStatusFilter] = useState<StatusFilter>(initialStatus);
 
-  const { 
-    members, 
-    searchQuery, 
-    searchMembers, 
-    activeMembers, 
-    dueMembers, 
-    overdueMembers,
-    deleteOverdueMembers,
-    deleteMember 
-  } = useCachedMemberStore();
+  const { members, activeMembers, dueMembers, overdueMembers, deleteMember } = useMembers();
+  const [searchQuery, setSearchQuery] = useState(initialSearch);
+  const searchResults = useSearchMembers(searchQuery);
+
+  const searchMembers = (query: string) => {
+    setSearchQuery(query);
+  };
   
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -49,12 +46,22 @@ export default function Memberships() {
   }, [initialSearch, searchMembers, searchQuery]);
 
   const getFilteredMembers = () => {
+    let baseMembers;
     switch (statusFilter) {
-      case 'active': return activeMembers;
-      case 'due': return dueMembers;
-      case 'overdue': return overdueMembers;
-      default: return members;
+      case 'active': baseMembers = activeMembers; break;
+      case 'due': baseMembers = dueMembers; break;
+      case 'overdue': baseMembers = overdueMembers; break;
+      default: baseMembers = members; break;
     }
+    
+    // Apply search filter if there's a search query
+    if (searchQuery.trim()) {
+      return searchResults.filter(member => 
+        statusFilter === 'all' || member.status === statusFilter
+      );
+    }
+    
+    return baseMembers;
   };
 
   const filteredMembers = getFilteredMembers();
@@ -94,23 +101,7 @@ export default function Memberships() {
 
   const statusInfo = getStatusInfo(statusFilter);
 
-  const handleDeleteOverdueMembers = async () => {
-    try {
-      await deleteOverdueMembers();
-      toast({
-        title: "Success",
-        description: `Successfully deleted ${overdueMembers.length} overdue members.`,
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to delete overdue members.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleDeleteMember = async (memberId: string) => {
+  const handleDeleteMember = async (memberId: number) => {
     try {
       await deleteMember(memberId);
       toast({

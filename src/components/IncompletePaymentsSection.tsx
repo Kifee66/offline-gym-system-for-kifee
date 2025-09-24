@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { Member } from '@/types/member';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -8,29 +7,29 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { CreditCard, Check, Phone, Edit3, Save, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useCachedMemberStore } from '@/hooks/useCachedMemberStore';
-import { supabase } from '@/integrations/supabase/client';
+import { useMembers } from '@/hooks/useMembers';
+import { useTransactions } from '@/hooks/useTransactions';
+import { Member } from '@/lib/db';
 
 interface IncompletePaymentsSectionProps {
   members: Member[];
 }
 
 export function IncompletePaymentsSection({ members }: IncompletePaymentsSectionProps) {
-  const { completePayment, updateMemberPaymentDetails } = useCachedMemberStore();
+  const { updateMember } = useMembers();
+  const { addTransaction } = useTransactions();
   const { toast } = useToast();
-  const [editingMember, setEditingMember] = useState<string | null>(null);
+  const [editingMember, setEditingMember] = useState<number | null>(null);
   const [editAmountPaid, setEditAmountPaid] = useState<string>('');
   const [addToMonthlyRevenue, setAddToMonthlyRevenue] = useState<boolean>(true);
 
-  const handleCompletePayment = async (memberId: string, memberName: string) => {
+  const handleCompletePayment = async (memberId: number, memberName: string) => {
     try {
-      await completePayment(memberId);
+      await updateMember(memberId, { paymentComplete: true });
       toast({
         title: "Payment Completed",
         description: `Payment marked as complete for ${memberName}`,
       });
-      // Force immediate refresh
-      window.location.reload();
     } catch (error) {
       toast({
         title: "Error",
@@ -40,12 +39,12 @@ export function IncompletePaymentsSection({ members }: IncompletePaymentsSection
     }
   };
 
-  const handleEditAmount = (memberId: string, member: Member) => {
+  const handleEditAmount = (memberId: number, member: Member) => {
     setEditingMember(memberId);
     setEditAmountPaid(member.amountPaid.toString());
   };
 
-  const handleSaveAmount = async (memberId: string, memberName: string) => {
+  const handleSaveAmount = async (memberId: number, memberName: string) => {
     try {
       const newAmountPaid = parseFloat(editAmountPaid);
       const currentMember = members.find(m => m.id === memberId);
@@ -71,23 +70,17 @@ export function IncompletePaymentsSection({ members }: IncompletePaymentsSection
       const additionalAmount = newAmountPaid - currentMember.amountPaid;
 
       // Update member payment details
-      await updateMemberPaymentDetails(memberId, newAmountPaid, 0);
+      await updateMember(memberId, { amountPaid: newAmountPaid });
 
-      // Create incomplete payment transaction if adding to revenue and there's additional amount
+      // Create transaction if adding to revenue and there's additional amount
       if (addToMonthlyRevenue && additionalAmount !== 0) {
-        const { error: paymentError } = await supabase
-          .from('payment_transactions')
-          .insert({
-            member_id: memberId,
-            amount: Math.abs(additionalAmount),
-            transaction_date: new Date().toISOString().split('T')[0],
-            transaction_type: 'incomplete',
-            description: `Incomplete payment adjustment - ${additionalAmount > 0 ? 'increase' : 'decrease'} of KSh ${Math.abs(additionalAmount)}`
-          });
-
-        if (paymentError) {
-          console.error('Error creating incomplete payment transaction:', paymentError);
-        }
+        await addTransaction({
+          memberId: memberId,
+          amount: Math.abs(additionalAmount),
+          type: 'payment',
+          description: `Payment adjustment - ${additionalAmount > 0 ? 'increase' : 'decrease'} of KSh ${Math.abs(additionalAmount)}`,
+          date: new Date()
+        });
       }
 
       setEditingMember(null);
@@ -147,10 +140,10 @@ export function IncompletePaymentsSection({ members }: IncompletePaymentsSection
                   <CreditCard className="h-4 w-4 text-orange-600 dark:text-orange-400" />
                 </div>
                 <div>
-                  <p className="font-semibold text-foreground">{member.fullName}</p>
+                  <p className="font-semibold text-foreground">{member.name}</p>
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Phone className="h-3 w-3" />
-                    {member.contactNumber}
+                    {member.phone}
                   </div>
                    {editingMember === member.id ? (
                     <div className="mt-1 space-y-2">
@@ -193,7 +186,7 @@ export function IncompletePaymentsSection({ members }: IncompletePaymentsSection
                   <>
                     <Button
                       size="sm"
-                      onClick={() => handleSaveAmount(member.id, member.fullName)}
+                      onClick={() => handleSaveAmount(member.id!, member.name)}
                       className="bg-green-600 hover:bg-green-700 text-white"
                     >
                       <Save className="h-4 w-4 mr-1" />
@@ -219,7 +212,7 @@ export function IncompletePaymentsSection({ members }: IncompletePaymentsSection
                     </Button>
                     <Button
                       size="sm"
-                      onClick={() => handleCompletePayment(member.id, member.fullName)}
+                      onClick={() => handleCompletePayment(member.id!, member.name)}
                       className="bg-green-600 hover:bg-green-700 text-white"
                     >
                       <Check className="h-4 w-4 mr-1" />

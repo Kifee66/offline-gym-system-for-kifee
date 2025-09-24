@@ -1,4 +1,4 @@
-import { Member } from '@/types/member';
+import { Member } from '@/lib/db';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
