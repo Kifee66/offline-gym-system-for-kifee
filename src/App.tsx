@@ -8,6 +8,7 @@ import PWAUpdatePrompt from "./components/PWAUpdatePrompt";
 import Index from "./pages/Index";
 import Home from "./pages/Home";
 import Memberships from "./pages/Memberships";
+import Register from "./pages/Register";
 import Renew from "./pages/Renew";
 import Revenue from "./pages/Revenue";
 import NotFound from "./pages/NotFound";
@@ -26,6 +27,7 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/home" element={<Home />} />
           <Route path="/memberships" element={<Memberships />} />
+          <Route path="/register" element={<Register />} />
           <Route path="/renew" element={<Renew />} />
           <Route path="/revenue" element={<Revenue />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
