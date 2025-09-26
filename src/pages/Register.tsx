@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { ArrowLeft, UserPlus } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useMembers } from '@/hooks/useMembers';
@@ -17,7 +18,8 @@ const memberSchema = z.object({
   phone: z.string().trim().min(10, "Phone number must be at least 10 digits").max(15, "Phone number must be less than 15 characters"),
   subscriptionType: z.enum(['monthly', 'quarterly', 'yearly']),
   amountPaid: z.number().min(1, "Amount must be greater than 0"),
-  paymentMethod: z.enum(['cash', 'mpesa'])
+  paymentMethod: z.enum(['cash', 'mpesa']),
+  paymentComplete: z.boolean()
 });
 
 export default function Register() {
@@ -31,7 +33,8 @@ export default function Register() {
     phone: '',
     subscriptionType: 'monthly' as 'monthly' | 'quarterly' | 'yearly',
     amountPaid: 3000,
-    paymentMethod: 'cash' as 'cash' | 'mpesa'
+    paymentMethod: 'cash' as 'cash' | 'mpesa',
+    paymentComplete: true
   });
 
   // Update amount paid when subscription type changes
@@ -90,7 +93,7 @@ export default function Register() {
         subscriptionType: validatedData.subscriptionType,
         amountPaid: validatedData.amountPaid,
         paymentMethod: validatedData.paymentMethod,
-        paymentComplete: true
+        paymentComplete: validatedData.paymentComplete
       });
 
       await addTransaction({
@@ -218,6 +221,17 @@ export default function Register() {
                     <SelectItem value="mpesa">M-Pesa</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="paymentComplete"
+                  checked={formData.paymentComplete}
+                  onCheckedChange={(checked) => 
+                    setFormData({...formData, paymentComplete: checked as boolean})
+                  }
+                />
+                <Label htmlFor="paymentComplete">Payment Complete</Label>
               </div>
 
               <Button type="submit" className="w-full">
