@@ -47,42 +47,63 @@ export class GymDatabase extends Dexie {
       transactions: '++id, memberId, amount, type, date, createdAt'
     });
 
-    this.on('ready', this.populate);
+    // Use open() to initialize and then populate
+    this.open().then(() => {
+      this.populate();
+    }).catch(error => {
+      console.error('Database initialization error:', error);
+    });
   }
 
   private async populate() {
-    // Add default subscription types if they don't exist
-    const subscriptionCount = await this.subscriptionTypes.count();
-    if (subscriptionCount === 0) {
-      await this.subscriptionTypes.bulkAdd([
-        {
-          name: 'Monthly',
-          durationMonths: 1,
-          price: 3000,
-          createdAt: new Date()
-        },
-        {
-          name: 'Quarterly',
-          durationMonths: 3,
-          price: 8000,
-          createdAt: new Date()
-        },
-        {
-          name: 'Yearly',
-          durationMonths: 12,
-          price: 30000,
-          createdAt: new Date()
-        }
-      ]);
+    try {
+      // Add default subscription types if they don't exist
+      const subscriptionCount = await this.subscriptionTypes.count();
+      if (subscriptionCount === 0) {
+        await this.subscriptionTypes.bulkAdd([
+          {
+            name: 'Monthly',
+            durationMonths: 1,
+            price: 3000,
+            createdAt: new Date()
+          },
+          {
+            name: 'Quarterly',
+            durationMonths: 3,
+            price: 8000,
+            createdAt: new Date()
+          },
+          {
+            name: 'Yearly',
+            durationMonths: 12,
+            price: 30000,
+            createdAt: new Date()
+          }
+        ]);
+        console.log('Default subscription types added');
+      }
+    } catch (error) {
+      console.error('Error populating database:', error);
+      // Don't throw here to prevent database initialization failure
     }
   }
 }
 
 export const db = new GymDatabase();
 
+// Ensure database is opened
+db.open().catch(error => {
+  console.error('Failed to open database:', error);
+});
+
 // Helper functions
 export const addMember = async (memberData: Omit<Member, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
+    // Ensure database is open before adding
+    if (!db.isOpen()) {
+      await db.open();
+    }
+    
     const now = new Date();
     const result = await db.members.add({
       ...memberData,
@@ -112,6 +133,11 @@ export const deleteMember = async (id: number) => {
 
 export const addTransaction = async (transactionData: Omit<Transaction, 'id' | 'createdAt'>) => {
   try {
+    // Ensure database is open before adding
+    if (!db.isOpen()) {
+      await db.open();
+    }
+    
     const result = await db.transactions.add({
       ...transactionData,
       createdAt: new Date()
