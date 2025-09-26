@@ -82,12 +82,19 @@ export const db = new GymDatabase();
 
 // Helper functions
 export const addMember = async (memberData: Omit<Member, 'id' | 'createdAt' | 'updatedAt'>) => {
-  const now = new Date();
-  return await db.members.add({
-    ...memberData,
-    createdAt: now,
-    updatedAt: now
-  });
+  try {
+    const now = new Date();
+    const result = await db.members.add({
+      ...memberData,
+      createdAt: now,
+      updatedAt: now
+    });
+    console.log('Member added successfully:', result);
+    return result;
+  } catch (error) {
+    console.error('Error adding member:', error);
+    throw error;
+  }
 };
 
 export const updateMember = async (id: number, memberData: Partial<Member>) => {
@@ -104,10 +111,17 @@ export const deleteMember = async (id: number) => {
 };
 
 export const addTransaction = async (transactionData: Omit<Transaction, 'id' | 'createdAt'>) => {
-  return await db.transactions.add({
-    ...transactionData,
-    createdAt: new Date()
-  });
+  try {
+    const result = await db.transactions.add({
+      ...transactionData,
+      createdAt: new Date()
+    });
+    console.log('Transaction added successfully:', result);
+    return result;
+  } catch (error) {
+    console.error('Error adding transaction:', error);
+    throw error;
+  }
 };
 
 // Calculate member status based on end date

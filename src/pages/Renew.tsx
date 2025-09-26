@@ -6,6 +6,7 @@ import { Link } from 'react-router-dom';
 import { useMembers } from '@/hooks/useMembers';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useToast } from '@/hooks/use-toast';
+import { calculateMemberStatus } from '@/lib/db';
 
 export default function Renew() {
   const { members, updateMember } = useMembers();
@@ -13,35 +14,60 @@ export default function Renew() {
   const { toast } = useToast();
   const [selectedMember, setSelectedMember] = useState<number | null>(null);
 
+  const getSubscriptionPrice = (subscriptionType: string) => {
+    const prices = {
+      monthly: 3000,
+      quarterly: 8000,
+      yearly: 30000
+    };
+    return prices[subscriptionType as keyof typeof prices] || 3000;
+  };
+
+  const getSubscriptionDuration = (subscriptionType: string) => {
+    const durations = {
+      monthly: 1,
+      quarterly: 3,
+      yearly: 12
+    };
+    return durations[subscriptionType as keyof typeof durations] || 1;
+  };
+
   const handleRenew = async (memberId: number) => {
     try {
       const member = members.find(m => m.id === memberId);
       if (!member) return;
 
       const newEndDate = new Date();
-      newEndDate.setMonth(newEndDate.getMonth() + 1); // Add 1 month
+      const duration = getSubscriptionDuration(member.subscriptionType);
+      newEndDate.setMonth(newEndDate.getMonth() + duration);
+
+      const status = calculateMemberStatus(newEndDate);
+      const amount = getSubscriptionPrice(member.subscriptionType);
 
       await updateMember(memberId, {
         endDate: newEndDate,
-        status: 'active'
+        status,
+        amountPaid: member.amountPaid + amount,
+        paymentComplete: true
       });
 
       await addTransaction({
         memberId,
-        amount: 3000, // Default monthly amount
+        amount,
         type: 'renewal',
-        description: 'Membership renewal',
+        description: `Membership renewal - ${member.subscriptionType}`,
         date: new Date()
       });
 
       toast({
         title: "Success",
-        description: "Membership renewed successfully",
+        description: `Membership renewed successfully for ${duration} month(s)`,
       });
     } catch (error) {
+      console.error('Renewal error:', error);
       toast({
         title: "Error",
-        description: "Failed to renew membership",
+        description: "Failed to renew membership. Please try again.",
         variant: "destructive",
       });
     }
@@ -82,6 +108,9 @@ export default function Renew() {
               <CardContent>
                 <p className="text-sm text-muted-foreground mb-2">
                   Phone: {member.phone}
+                </p>
+                <p className="text-sm text-muted-foreground mb-2">
+                  Subscription: {member.subscriptionType}
                 </p>
                 <p className="text-sm text-muted-foreground mb-4">
                   Expires: {member.endDate.toLocaleDateString()}
