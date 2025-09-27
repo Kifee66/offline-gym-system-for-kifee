@@ -33,10 +33,21 @@ export interface Transaction {
   createdAt: Date;
 }
 
+export interface AdminSettings {
+  id?: number;
+  passwordHash: string;
+  salt: string;
+  isSetup: boolean;
+  lastLogin?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export class GymDatabase extends Dexie {
   members!: Table<Member>;
   subscriptionTypes!: Table<SubscriptionType>;
   transactions!: Table<Transaction>;
+  adminSettings!: Table<AdminSettings>;
 
   constructor() {
     super('GymDatabase');
@@ -44,7 +55,8 @@ export class GymDatabase extends Dexie {
     this.version(1).stores({
       members: '++id, name, phone, status, startDate, endDate, subscriptionType, createdAt',
       subscriptionTypes: '++id, name, durationMonths, price, createdAt',
-      transactions: '++id, memberId, amount, type, date, createdAt'
+      transactions: '++id, memberId, amount, type, date, createdAt',
+      adminSettings: '++id, isSetup, createdAt'
     });
 
     // Use open() to initialize and then populate

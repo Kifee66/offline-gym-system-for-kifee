@@ -164,6 +164,13 @@ export default function Home() {
           {/* Incomplete Payments Detail Section */}
           <IncompletePaymentsSection members={incompletePaymentMembers} />
         </div>
+        
+        {/* Admin Access */}
+        <div className="mt-8 pt-8 border-t border-white/20 text-center">
+          <Link to="/admin" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+            Admin Access
+          </Link>
+        </div>
       </div>
     </div>
   );

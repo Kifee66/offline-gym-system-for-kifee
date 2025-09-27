@@ -12,6 +12,11 @@ import Register from "./pages/Register";
 import Renew from "./pages/Renew";
 import Revenue from "./pages/Revenue";
 import NotFound from "./pages/NotFound";
+import AdminLogin from "./pages/admin/AdminLogin";
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import AdminSettings from "./pages/admin/AdminSettings";
+import AdminMemberManager from "./pages/admin/AdminMemberManager";
+import AdminRoute from "./components/admin/AdminRoute";
 
 const queryClient = new QueryClient();
 
@@ -30,6 +35,13 @@ const App = () => (
           <Route path="/register" element={<Register />} />
           <Route path="/renew" element={<Renew />} />
           <Route path="/revenue" element={<Revenue />} />
+          
+          {/* Admin Routes */}
+          <Route path="/admin" element={<AdminLogin />} />
+          <Route path="/admin/dashboard" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+          <Route path="/admin/settings" element={<AdminRoute><AdminSettings /></AdminRoute>} />
+          <Route path="/admin/members" element={<AdminRoute><AdminMemberManager /></AdminRoute>} />
+          
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
