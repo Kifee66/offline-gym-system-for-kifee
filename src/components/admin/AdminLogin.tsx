@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,6 +14,7 @@ const AdminLogin = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { isAuthenticated, isSetup, setup, login, validatePasswordStrength } = useAdmin();
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   if (isAuthenticated) {
     return <Navigate to="/admin/dashboard" replace />;
@@ -38,8 +39,7 @@ const AdminLogin = () => {
 
     if (result.success) {
       toast({ title: "Success", description: result.message });
-      setPassword('');
-      setConfirmPassword('');
+      navigate('/admin/dashboard');
     } else {
       toast({ title: "Error", description: result.message, variant: "destructive" });
     }

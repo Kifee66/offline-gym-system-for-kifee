@@ -54,6 +54,11 @@ export default function Home() {
             <div className="flex items-center gap-4">
               <MemberSearch onSearch={searchMembers} searchQuery={searchQuery} />
               <ExportButtons />
+              <Link to="/admin/dashboard">
+                <Button variant="outline" className="font-semibold">
+                  Admin Dashboard
+                </Button>
+              </Link>
             </div>
           </div>
         </div>
@@ -165,12 +170,6 @@ export default function Home() {
           <IncompletePaymentsSection members={incompletePaymentMembers} />
         </div>
         
-        {/* Admin Access */}
-        <div className="mt-8 pt-8 border-t border-white/20 text-center">
-          <Link to="/admin" className="text-sm text-muted-foreground hover:text-primary transition-colors">
-            Admin Access
-          </Link>
-        </div>
       </div>
     </div>
   );
