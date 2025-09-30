@@ -1,93 +1,147 @@
-import { useState, useEffect } from 'react';
-import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '@/lib/db';
-import { 
-  isAdminSetup, 
-  setupAdmin, 
-  loginAdmin, 
-  logoutAdmin, 
-  isAdminAuthenticated,
-  changeAdminPassword,
-  validatePasswordStrength
-} from '@/lib/admin-auth';
+import { useEffect, useState, useCallback } from "react";
+import Dexie, { Table } from "dexie";
 
-export const useAdmin = () => {
+// --- Dexie DB setup ---
+interface Admin {
+  id: string; // always "admin"
+  username: string;
+  passwordHash: string;
+}
+
+interface Session {
+  id: string; // always "session"
+  isAuthenticated: boolean;
+}
+
+class AdminDB extends Dexie {
+  admin!: Table<Admin, string>;
+  session!: Table<Session, string>;
+
+  constructor() {
+    super("AdminDB");
+    this.version(1).stores({
+      admin: "id",
+      session: "id",
+    });
+  }
+}
+
+const db = new AdminDB();
+
+// --- Password hashing helper ---
+async function hashPassword(password: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(hashBuffer))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+// --- Password strength validation ---
+function validatePasswordStrength(password: string) {
+  if (password.length < 8) {
+    return { isValid: false, message: "Password must be at least 8 characters long" };
+  }
+  if (!/[A-Z]/.test(password)) {
+    return { isValid: false, message: "Password must contain at least one uppercase letter" };
+  }
+  if (!/[a-z]/.test(password)) {
+    return { isValid: false, message: "Password must contain at least one lowercase letter" };
+  }
+  if (!/[0-9]/.test(password)) {
+    return { isValid: false, message: "Password must contain at least one number" };
+  }
+  return { isValid: true, message: "Password is strong" };
+}
+
+// --- Hook ---
+export function useAdmin() {
+  const [isSetup, setIsSetup] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  const adminSettings = useLiveQuery(() => 
-    db.adminSettings.where('isSetup').equals(1).first()
-  );
-
+  // Load state on mount
   useEffect(() => {
-    const checkAuth = () => {
-      setIsAuthenticated(isAdminAuthenticated());
+    const load = async () => {
+      const admin = await db.admin.get("admin");
+      const session = await db.session.get("session");
+
+      setIsSetup(!!admin);
+      setIsAuthenticated(session?.isAuthenticated ?? false);
       setIsLoading(false);
     };
-
-    checkAuth();
-    
-    // Check authentication periodically
-    const interval = setInterval(checkAuth, 30000); // Check every 30 seconds
-    
-    return () => clearInterval(interval);
+    load();
   }, []);
 
-  const setup = async (password: string) => {
-    try {
-      await setupAdmin(password);
-      return { success: true, message: 'Admin setup completed successfully' };
-    } catch (error) {
-      console.error('Setup error:', error);
-      return { success: false, message: 'Failed to setup admin' };
-    }
-  };
+  // Setup new admin account
+  const setup = useCallback(async (username: string, password: string) => {
+    const existing = await db.admin.get("admin");
+    if (existing) throw new Error("Admin already setup");
 
-  const login = async (password: string) => {
-    try {
-      const success = await loginAdmin(password);
-      if (success) {
-        setIsAuthenticated(true);
-        return { success: true, message: 'Login successful' };
-      }
-      return { success: false, message: 'Invalid password' };
-    } catch (error) {
-      console.error('Login error:', error);
-      return { success: false, message: 'Login failed' };
-    }
-  };
+    const passwordHash = await hashPassword(password);
+    await db.admin.put({ id: "admin", username, passwordHash });
+    setIsSetup(true);
 
-  const logout = () => {
-    logoutAdmin();
+    // Auto-login after setup
+    await db.session.put({ id: "session", isAuthenticated: true });
+    setIsAuthenticated(true);
+
+    return { success: true, message: "Admin setup completed successfully" };
+  }, []);
+
+  // Login
+  const login = useCallback(async (username: string, password: string) => {
+    const admin = await db.admin.get("admin");
+    if (!admin) return { success: false, message: "Admin not setup" };
+
+    if (admin.username !== username) {
+      return { success: false, message: "Invalid username" };
+    }
+
+    const hash = await hashPassword(password);
+    if (hash !== admin.passwordHash) {
+      return { success: false, message: "Invalid password" };
+    }
+
+    await db.session.put({ id: "session", isAuthenticated: true });
+    setIsAuthenticated(true);
+    return { success: true, message: "Login successful" };
+  }, []);
+
+  // Logout
+  const logout = useCallback(async () => {
+    await db.session.put({ id: "session", isAuthenticated: false });
     setIsAuthenticated(false);
-  };
+  }, []);
 
-  const changePassword = async (currentPassword: string, newPassword: string) => {
-    try {
-      const validation = validatePasswordStrength(newPassword);
-      if (!validation.isValid) {
-        return { success: false, message: validation.message };
+  // Change password
+  const changePassword = useCallback(
+    async (currentPassword: string, newPassword: string) => {
+      const admin = await db.admin.get("admin");
+      if (!admin) return { success: false, message: "Admin not setup" };
+
+      const currentHash = await hashPassword(currentPassword);
+      if (currentHash !== admin.passwordHash) {
+        return { success: false, message: "Current password is incorrect" };
       }
 
-      const success = await changeAdminPassword(currentPassword, newPassword);
-      if (success) {
-        return { success: true, message: 'Password changed successfully' };
-      }
-      return { success: false, message: 'Current password is incorrect' };
-    } catch (error) {
-      console.error('Change password error:', error);
-      return { success: false, message: 'Failed to change password' };
-    }
-  };
+      const newHash = await hashPassword(newPassword);
+      await db.admin.put({ ...admin, passwordHash: newHash });
+
+      return { success: true, message: "Password changed successfully" };
+    },
+    []
+  );
 
   return {
+    isSetup,
     isAuthenticated,
     isLoading,
-    isSetup: !!adminSettings,
     setup,
     login,
     logout,
     changePassword,
-    validatePasswordStrength
+    validatePasswordStrength,
   };
-};
+}
