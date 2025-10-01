@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { MemberCard } from '@/components/MemberCard';
@@ -31,9 +31,9 @@ export default function Memberships() {
   const [searchQuery, setSearchQuery] = useState(initialSearch);
   const searchResults = useSearchMembers(searchQuery);
 
-  const searchMembers = (query: string) => {
+  const searchMembers = useCallback((query: string) => {
     setSearchQuery(query);
-  };
+  }, []);
   
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -205,6 +205,22 @@ export default function Memberships() {
                 }}
                 onDelete={handleDeleteMember}
                 showDeleteButton={member.status === 'overdue'}
+                onCheckIn={async (memberId) => {
+                  const result = await import('@/lib/db').then(mod => mod.checkInMember(memberId));
+                  if (result) {
+                    toast({
+                      title: 'Checked In',
+                      description: 'Member successfully checked in.',
+                      variant: 'default',
+                    });
+                  } else {
+                    toast({
+                      title: 'Already Checked In',
+                      description: 'This member has already checked in today.',
+                      variant: 'default',
+                    });
+                  }
+                }}
               />
             ))}
           </div>

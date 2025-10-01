@@ -16,7 +16,7 @@ import { z } from 'zod';
 const memberSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(100, "Name must be less than 100 characters"),
   phone: z.string().trim().min(10, "Phone number must be at least 10 digits").max(15, "Phone number must be less than 15 characters"),
-  subscriptionType: z.enum(['monthly', 'quarterly', 'yearly']),
+  subscriptionType: z.enum(['weekly', 'monthly', 'quarterly', 'yearly']),
   amountPaid: z.number().min(1, "Amount must be greater than 0"),
   paymentMethod: z.enum(['cash', 'mpesa']),
   paymentComplete: z.boolean()
@@ -31,24 +31,14 @@ export default function Register() {
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
-    subscriptionType: 'monthly' as 'monthly' | 'quarterly' | 'yearly',
-    amountPaid: 3000,
+    subscriptionType: 'weekly' as 'weekly' | 'monthly' | 'quarterly' | 'yearly',
+    amountPaid: 0,
     paymentMethod: 'cash' as 'cash' | 'mpesa',
     paymentComplete: true
   });
 
   // Update amount paid when subscription type changes
-  useEffect(() => {
-    const subscriptionPrices = {
-      monthly: 3000,
-      quarterly: 8000,
-      yearly: 30000
-    };
-    setFormData(prev => ({ 
-      ...prev, 
-      amountPaid: subscriptionPrices[prev.subscriptionType] 
-    }));
-  }, [formData.subscriptionType]);
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,6 +61,9 @@ export default function Register() {
       const endDate = new Date();
       
       switch (validatedData.subscriptionType) {
+        case 'weekly':
+          endDate.setDate(endDate.getDate() + 7);
+          break;
         case 'monthly':
           endDate.setMonth(endDate.getMonth() + 1);
           break;
@@ -187,9 +180,10 @@ export default function Register() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="monthly">Monthly - KSh 3,000</SelectItem>
-                    <SelectItem value="quarterly">Quarterly - KSh 8,000</SelectItem>
-                    <SelectItem value="yearly">Yearly - KSh 30,000</SelectItem>
+                    <SelectItem value="weekly">Weekly</SelectItem>
+                    <SelectItem value="monthly">Monthly</SelectItem>
+                    <SelectItem value="quarterly">Quarterly</SelectItem>
+                    <SelectItem value="yearly">Yearly</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

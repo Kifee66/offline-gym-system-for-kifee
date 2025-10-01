@@ -21,9 +21,10 @@ interface MemberCardProps {
   onRenew?: (memberId: number) => void;
   onDelete?: (memberId: number) => void;
   showDeleteButton?: boolean;
+  onCheckIn?: (memberId: number) => void;
 }
 
-export function MemberCard({ member, onRenew, onDelete, showDeleteButton }: MemberCardProps) {
+export function MemberCard({ member, onRenew, onDelete, showDeleteButton, onCheckIn }: MemberCardProps) {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active': return 'bg-status-active text-white';
@@ -105,6 +106,28 @@ export function MemberCard({ member, onRenew, onDelete, showDeleteButton }: Memb
         </div>
         
         <div className="flex gap-2 mt-4">
+          {onCheckIn && (member.status === 'active' || member.status === 'due') && (
+            <Button 
+              variant={member.status === 'active' ? 'success' : 'warning'}
+              size="sm"
+              className="flex-1"
+              onClick={() => onCheckIn(member.id!)}
+            >
+              Check In
+            </Button>
+          )}
+          {member.status === 'active' && (
+            <div className="flex-1 text-success text-sm font-semibold flex flex-col items-center justify-center">
+              <span>Member is active</span>
+              <span>{duePeriodInfo ? duePeriodInfo.text : ''}</span>
+            </div>
+          )}
+          {member.status === 'due' && (
+            <div className="flex-1 text-warning text-sm font-semibold flex flex-col items-center justify-center">
+              <span>Member is due soon</span>
+              <span>{duePeriodInfo ? duePeriodInfo.text : ''}</span>
+            </div>
+          )}
           {onRenew && (
             <Button 
               variant={member.status === 'active' ? 'outline' : 'fitness'}
@@ -115,7 +138,6 @@ export function MemberCard({ member, onRenew, onDelete, showDeleteButton }: Memb
               Renew Membership
             </Button>
           )}
-          
           {showDeleteButton && onDelete && (
             <AlertDialog>
               <AlertDialogTrigger asChild>

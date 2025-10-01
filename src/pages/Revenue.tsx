@@ -88,18 +88,7 @@ export default function Revenue() {
             </CardHeader>
             <CardContent>
               <p className="text-3xl font-bold text-foreground">KSh {totalRevenue.toLocaleString()}</p>
-              <div className="flex items-center gap-2 mt-2">
-                <input
-                  type="checkbox"
-                  id="include-incomplete"
-                  checked={includeIncompletePayments}
-                  onChange={(e) => setIncludeIncompletePayments(e.target.checked)}
-                  className="rounded border border-muted-foreground"
-                />
-                <label htmlFor="include-incomplete" className="text-sm text-muted-foreground">
-                  Include Incomplete Payments
-                </label>
-              </div>
+              
             </CardContent>
           </Card>
 

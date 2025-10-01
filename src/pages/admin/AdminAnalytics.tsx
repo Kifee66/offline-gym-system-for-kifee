@@ -5,6 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { BarChart3, Users, DollarSign, Calendar, AlertTriangle, Pencil, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { updateTransaction, deleteTransaction } from '@/lib/transactionActions';
+import { db } from '@/lib/db';
+
+
 
 const AdminAnalytics = () => {
   const { members, activeMembers, dueMembers, overdueMembers } = useMembers();
@@ -16,6 +19,21 @@ const AdminAnalytics = () => {
     acc[month] = (acc[month] || 0) + tx.amount;
     return acc;
   }, {} as Record<string, number>);
+
+  // Handler to clear all revenue for a given month
+  const handleClearMonthRevenue = async (month: string) => {
+    if (!window.confirm(`Are you sure you want to clear all revenue for ${month}? This cannot be undone.`)) return;
+    // Find all transactions for the given month
+    const txsToDelete = (transactions || []).filter(tx => {
+      const txMonth = new Date(tx.date).toLocaleString('default', { month: 'short', year: 'numeric' });
+      return txMonth === month;
+    });
+    for (const tx of txsToDelete) {
+      await db.transactions.delete(tx.id!);
+    }
+    // Optionally, you can show a toast or reload data here
+    alert(`Cleared all revenue for ${month}`);
+  };
 
   // Example: Member status breakdown
   const statusCounts = {
@@ -214,6 +232,14 @@ const AdminAnalytics = () => {
                     <tr key={month}>
                       <td className="py-2 px-4">{month}</td>
                       <td className="py-2 px-4">{amount.toLocaleString()}</td>
+                      <td className="py-2 px-4">
+                        <button
+                          className="btn btn-destructive btn-sm"
+                          onClick={() => handleClearMonthRevenue(month)}
+                        >
+                          Clear Revenue
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

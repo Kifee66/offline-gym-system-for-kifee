@@ -1,3 +1,26 @@
+// ...existing code...
+export const checkInMember = async (memberId: number) => {
+  const member = await db.members.get(memberId);
+  if (!member) return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const lastCheckIn = member.lastCheckIn ? new Date(member.lastCheckIn) : null;
+  if (lastCheckIn) {
+    lastCheckIn.setHours(0, 0, 0, 0);
+    if (lastCheckIn.getTime() === today.getTime()) {
+      // Already checked in today
+      return false;
+    }
+  }
+  const history = member.checkInHistory || [];
+  history.push({ date: today.toISOString() });
+  await db.members.update(memberId, {
+    lastCheckIn: today,
+    checkInHistory: history,
+    updatedAt: new Date()
+  });
+  return true;
+};
 import Dexie, { Table } from 'dexie';
 
 export interface Member {
@@ -7,14 +30,15 @@ export interface Member {
   status: 'active' | 'due' | 'overdue';
   startDate: Date;
   endDate: Date;
-  subscriptionType: 'monthly' | 'quarterly' | 'yearly';
+  subscriptionType: 'weekly' | 'monthly' | 'quarterly' | 'yearly';
   amountPaid: number;
   paymentMethod: 'cash' | 'mpesa';
   paymentComplete: boolean;
   createdAt: Date;
   updatedAt: Date;
+  lastCheckIn?: Date;
+  checkInHistory?: Array<{ date: string }>;
 }
-
 export interface SubscriptionType {
   id?: number;
   name: string;
@@ -51,15 +75,12 @@ export class GymDatabase extends Dexie {
 
   constructor() {
     super('GymDatabase');
-    
     this.version(1).stores({
       members: '++id, name, phone, status, startDate, endDate, subscriptionType, createdAt',
       subscriptionTypes: '++id, name, durationMonths, price, createdAt',
       transactions: '++id, memberId, amount, type, date, createdAt',
       adminSettings: '++id, isSetup, createdAt'
     });
-
-    // Use open() to initialize and then populate
     this.open().then(() => {
       this.populate();
     }).catch(error => {
@@ -69,7 +90,6 @@ export class GymDatabase extends Dexie {
 
   private async populate() {
     try {
-      // Add default subscription types if they don't exist
       const subscriptionCount = await this.subscriptionTypes.count();
       if (subscriptionCount === 0) {
         await this.subscriptionTypes.bulkAdd([
@@ -96,7 +116,6 @@ export class GymDatabase extends Dexie {
       }
     } catch (error) {
       console.error('Error populating database:', error);
-      // Don't throw here to prevent database initialization failure
     }
   }
 }

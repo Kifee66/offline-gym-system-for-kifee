@@ -15,7 +15,7 @@ import { z } from 'zod';
 const renewalSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(100, "Name must be less than 100 characters"),
   phone: z.string().trim().min(10, "Phone number must be at least 10 digits").max(15, "Phone number must be less than 15 characters"),
-  subscriptionType: z.enum(['monthly', 'quarterly', 'yearly']),
+  subscriptionType: z.enum(['weekly', 'monthly', 'quarterly', 'yearly']),
   amountPaid: z.number().min(1, "Amount must be greater than 0"),
   paymentMethod: z.enum(['cash', 'mpesa']),
   paymentComplete: z.boolean()
@@ -43,11 +43,12 @@ export default function RenewMemberForm({ member, onSuccess, onCancel }: RenewMe
 
   function getSubscriptionPrice(subscriptionType: string): number {
     const prices = {
+      weekly: 1000,
       monthly: 3000,
       quarterly: 8000,
       yearly: 30000
     };
-    return prices[subscriptionType as keyof typeof prices] || 3000;
+    return prices[subscriptionType as keyof typeof prices] || 1000;
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -60,6 +61,9 @@ export default function RenewMemberForm({ member, onSuccess, onCancel }: RenewMe
       const endDate = new Date();
       
       switch (validatedData.subscriptionType) {
+        case 'weekly':
+          endDate.setDate(endDate.getDate() + 7);
+          break;
         case 'monthly':
           endDate.setMonth(endDate.getMonth() + 1);
           break;
@@ -159,6 +163,7 @@ export default function RenewMemberForm({ member, onSuccess, onCancel }: RenewMe
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="weekly">Weekly - KSh 1,000</SelectItem>
                 <SelectItem value="monthly">Monthly - KSh 3,000</SelectItem>
                 <SelectItem value="quarterly">Quarterly - KSh 8,000</SelectItem>
                 <SelectItem value="yearly">Yearly - KSh 30,000</SelectItem>

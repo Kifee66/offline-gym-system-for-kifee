@@ -4,16 +4,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { useAdmin } from '@/hooks/useAdmin';
 import { Link } from 'react-router-dom';
-import { 
-  Users, 
-  DollarSign, 
-  AlertTriangle, 
+
+import {
+  Users,
+  DollarSign,
+  AlertTriangle,
   Calendar,
   Settings,
   UserCog,
   BarChart3,
-  LogOut 
+  LogOut
 } from 'lucide-react';
+import { ImportCSVButton } from '@/components/ImportCSVButton';
 
 const AdminDashboard = () => {
   const { members, activeMembers, dueMembers, overdueMembers } = useMembers();
@@ -104,6 +106,7 @@ const AdminDashboard = () => {
                 <LogOut className="w-4 h-4 mr-2" />
                 Logout
               </Button>
+              <ImportCSVButton />
             </div>
           </div>
         </div>
