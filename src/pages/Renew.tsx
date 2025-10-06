@@ -12,6 +12,7 @@ import { Member } from '@/lib/db';
 export default function Renew() {
   const { members } = useMembers();
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
+  const [search, setSearch] = useState('');
 
   if (selectedMember) {
     return (
@@ -39,6 +40,12 @@ export default function Renew() {
     );
   }
 
+  // Filter members by search
+  const filteredMembers = members.filter(m =>
+    m.name.toLowerCase().includes(search.toLowerCase()) ||
+    m.phone.includes(search)
+  );
+
   return (
     <div className="min-h-screen bg-hero-gradient">
       <div className="bg-white/95 backdrop-blur-sm shadow-sm border-b">
@@ -56,8 +63,17 @@ export default function Renew() {
       </div>
 
       <div className="container mx-auto px-4 py-8">
+        <div className="mb-6 max-w-md">
+          <input
+            type="text"
+            placeholder="Search by name or phone..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="input w-full px-4 py-2 border rounded focus:outline-none focus:ring"
+          />
+        </div>
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {members.map((member) => (
+          {filteredMembers.map((member) => (
             <Card key={member.id} className="overflow-hidden hover:shadow-lg transition-shadow">
               <CardHeader className={`pb-3 ${
                 member.status === 'active' ? 'bg-green-50' :
