@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Download, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { trackEvent } from '@/utils/analytics';
+import { logLocalEvent } from '@/utils/localTracking';
 
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: string[];
@@ -33,6 +35,19 @@ const PWAInstallPrompt = () => {
 
   const handleInstallClick = async () => {
     if (!deferredPrompt) return;
+
+    // Log locally and to analytics that install was clicked
+    try {
+      await logLocalEvent('install_click');
+    } catch (err) {
+      console.warn('Failed to log local event:', err);
+    }
+
+    try {
+      await trackEvent('install_click');
+    } catch (err) {
+      console.warn('Failed to track analytics event:', err);
+    }
 
     try {
       await deferredPrompt.prompt();
