@@ -33,6 +33,29 @@ const PWAInstallPrompt = () => {
     };
   }, []);
 
+  // Listen for successful PWA install and log the event locally and to analytics
+  useEffect(() => {
+    const onAppInstalled = (e: Event) => {
+      // fire-and-forget local and analytics logging
+      (async () => {
+        try {
+          await logLocalEvent('pwa_installed');
+        } catch (err) {
+          console.warn('Failed to log local pwa_installed event:', err);
+        }
+
+        try {
+          await trackEvent('pwa_installed');
+        } catch (err) {
+          console.warn('Failed to track analytics pwa_installed event:', err);
+        }
+      })();
+    };
+
+    window.addEventListener('appinstalled', onAppInstalled);
+    return () => window.removeEventListener('appinstalled', onAppInstalled);
+  }, []);
+
   const handleInstallClick = async () => {
     if (!deferredPrompt) return;
 
