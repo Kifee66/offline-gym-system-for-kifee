@@ -14,7 +14,10 @@ import { z } from 'zod';
 
 const renewalSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(100, "Name must be less than 100 characters"),
-  phone: z.string().trim().min(10, "Phone number must be at least 10 digits").max(15, "Phone number must be less than 15 characters"),
+  // phone is optional on renewal as well
+  phone: z.string().trim().refine(v => v === '' || (v.length >= 10 && v.length <= 15), {
+    message: 'Phone number must be at least 10 digits when provided',
+  }),
   subscriptionType: z.enum(['weekly', 'monthly', 'quarterly', 'yearly']),
   amountPaid: z.number().min(1, "Amount must be greater than 0"),
   paymentMethod: z.enum(['cash', 'mpesa']),
@@ -141,12 +144,11 @@ export default function RenewMemberForm({ member, onSuccess, onCancel }: RenewMe
           </div>
 
           <div>
-            <Label htmlFor="phone">Phone Number</Label>
+            <Label htmlFor="phone">Phone Number (optional)</Label>
             <Input
               id="phone"
               value={formData.phone}
               onChange={(e) => setFormData({...formData, phone: e.target.value})}
-              required
             />
           </div>
 

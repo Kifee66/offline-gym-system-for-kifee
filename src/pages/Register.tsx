@@ -15,7 +15,10 @@ import { z } from 'zod';
 
 const memberSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(100, "Name must be less than 100 characters"),
-  phone: z.string().trim().min(10, "Phone number must be at least 10 digits").max(15, "Phone number must be less than 15 characters"),
+  // phone is optional; allow empty string or a string between 10 and 15 characters
+  phone: z.string().trim().refine(v => v === '' || (v.length >= 10 && v.length <= 15), {
+    message: 'Phone number must be at least 10 digits when provided',
+  }),
   subscriptionType: z.enum(['weekly', 'monthly', 'quarterly', 'yearly']),
   amountPaid: z.number().min(1, "Amount must be greater than 0"),
   paymentMethod: z.enum(['cash', 'mpesa']),
@@ -47,15 +50,17 @@ export default function Register() {
       // Validate form data
       const validatedData = memberSchema.parse(formData);
       
-      // Check for duplicate phone numbers
-      const existingMember = members.find(member => member.phone === validatedData.phone);
-      if (existingMember) {
-        toast({
-          title: "Error",
-          description: "A member with this phone number already exists",
-          variant: "destructive",
-        });
-        return;
+      // Check for duplicate phone numbers (only if phone provided)
+      if (validatedData.phone) {
+        const existingMember = members.find(member => member.phone === validatedData.phone);
+        if (existingMember) {
+          toast({
+            title: "Error",
+            description: "A member with this phone number already exists",
+            variant: "destructive",
+          });
+          return;
+        }
       }
       const startDate = new Date();
       const endDate = new Date();
@@ -159,12 +164,11 @@ export default function Register() {
               </div>
 
               <div>
-                <Label htmlFor="phone">Phone Number</Label>
+                <Label htmlFor="phone">Phone Number (optional)</Label>
                 <Input
                   id="phone"
                   value={formData.phone}
                   onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                  required
                 />
               </div>
 
